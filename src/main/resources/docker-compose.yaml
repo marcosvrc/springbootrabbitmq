@@ -1,31 +1,46 @@
-version: '3'
+version: '3.8'
+
 services:
-  oracle:
-    image: sath89/oracle-12c
-    ports:
-        - 1525:1525
-    environment:
-        - ORACLE_ALLOW_REMOTE=true
-        - WEB_CONSOLE=false
-        - ORACLE_SID=xe  
   rabbitmq:
-    image: rabbitmq:management
-    expose:
-     - "5672"
+    image: rabbitmq:3.12-management
+    container_name: rabbitmq
     ports:
-     - "15672:15672"
-     - "5672:5672"
-    networks:
-      - default
-  zipkin:
-    image: "openzipkin/zipkin"
-    depends_on:
-     - rabbitmq
-    links:
-     - rabbitmq
+      - "5672:5672"  # AMQP protocol port
+      - "15672:15672"  # Management UI port
     environment:
-     - RABBIT_URI=amqp://rabbitmq
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - app-network
+
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
     ports:
       - "9411:9411"
     networks:
-      - default
+      - app-network
+
+  oracle:
+    image: container-registry.oracle.com/database/express:21.3.0-xe
+    container_name: oracle
+    ports:
+      - "1521:1521"
+      - "5500:5500"
+    environment:
+      - ORACLE_PWD=oracle
+      - ORACLE_CHARACTERSET=AL32UTF8
+    volumes:
+      - oracle_data:/opt/oracle/oradata
+    networks:
+      - app-network
+
+volumes:
+  rabbitmq_data:
+  oracle_data:
+
+networks:
+  app-network:
+    driver: bridge
